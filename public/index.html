@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>嵌入式学习笔记</title>
+<style>
+/* ========== Reset & Vars ========== */
+*{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --bg:#0a0a14;
+  --bg2:#111122;
+  --surface:rgba(255,255,255,0.03);
+  --surface-hover:rgba(255,255,255,0.06);
+  --border:rgba(255,255,255,0.06);
+  --text:#e0e0e8;
+  --text2:#8888a0;
+  --text3:#606078;
+  --accent1:#5b9cf5;
+  --accent1-bg:rgba(91,156,245,0.10);
+  --accent1-glow:rgba(91,156,245,0.25);
+  --accent2:#f59b3b;
+  --accent2-bg:rgba(245,155,59,0.10);
+  --accent2-glow:rgba(245,155,59,0.25);
+  --accent3:#4ade80;
+  --accent3-bg:rgba(74,222,128,0.10);
+  --accent3-glow:rgba(74,222,128,0.25);
+  --radius:16px;
+  --radius-sm:10px;
+  --transition:0.35s cubic-bezier(0.22, 0.61, 0.36, 1);
+  --transition-fast:0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* Grid background */
+body::before{
+  content:'';
+  position:fixed;inset:0;z-index:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.015) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,0.015) 1px,transparent 1px);
+  background-size:60px 60px;
+  pointer-events:none;
+}
+
+/* Ambient glow orbs */
+body::after{
+  content:'';
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse at 20% 20%, var(--accent1-glow) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, var(--accent2-glow) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, var(--accent3-glow) 0%, transparent 50%);
+  opacity:0.5;
+}
+
+/* ========== Header ========== */
+.header{
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 32px;gap:16px;flex-wrap:wrap;
+  backdrop-filter:blur(24px) saturate(180%);
+  -webkit-backdrop-filter:blur(24px) saturate(180%);
+  background:rgba(10,10,20,0.75);
+  border-bottom:1px solid var(--border);
+}
+.header h1{
+  font-size:22px;font-weight:800;letter-spacing:0.5px;
+  background:linear-gradient(135deg,#e0e0f0,#a0b0d0);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.header h1 span{color:var(--accent1);background:none;-webkit-text-fill-color:var(--accent1);}
+.header-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.search-wrap{
+  display:flex;align-items:center;gap:8px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:24px;padding:0 16px;transition:var(--transition-fast);
+}
+.search-wrap:focus-within{border-color:rgba(255,255,255,0.2);box-shadow:0 0 0 3px rgba(255,255,255,0.04)}
+.search-wrap svg{width:16px;height:16px;opacity:0.4;flex-shrink:0}
+.search-wrap input{
+  background:transparent;border:none;color:var(--text);
+  padding:9px 0;font-size:13px;width:180px;outline:none
+}
+.search-wrap input::placeholder{color:var(--text3)}
+
+/* ========== Buttons ========== */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;padding:9px 20px;
+  border-radius:24px;font-size:13px;font-weight:600;cursor:pointer;
+  border:none;transition:var(--transition-fast);position:relative;
+  overflow:hidden;white-space:nowrap;font-family:inherit;
+  letter-spacing:0.3px;
+}
+.btn::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.1),transparent);
+  opacity:0;transition:opacity 0.2s;
+}
+.btn:hover::after{opacity:1}
+.btn:active{transform:scale(0.96)}
+.btn-primary{
+  background:linear-gradient(135deg,var(--accent1),#3d7ce8);
+  color:#fff;box-shadow:0 4px 20px var(--accent1-glow);
+}
+.btn-primary:hover{box-shadow:0 6px 30px var(--accent1-glow);transform:translateY(-1px)}
+.btn-ghost{
+  background:var(--surface);color:var(--text2);
+  border:1px solid var(--border);
+}
+.btn-ghost:hover{background:var(--surface-hover);color:var(--text);border-color:rgba(255,255,255,0.15)}
+.btn-icon{
+  width:36px;height:36px;padding:0;border-radius:50%;
+  background:transparent;border:none;color:var(--text2);
+  cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;
+  transition:var(--transition-fast)
+}
+.btn-icon:hover{background:var(--surface-hover);color:var(--text)}
+.btn-icon.danger:hover{background:rgba(239,68,68,0.15);color:#ef4444}
+
+/* ========== Top Hero: 3 Module Cards ========== */
+.hero-section{
+  position:relative;z-index:1;
+  padding:40px 32px 24px;
+  max-width:1300px;margin:0 auto;
+}
+.hero-section h2{
+  font-size:13px;text-transform:uppercase;letter-spacing:3px;
+  color:var(--text3);margin-bottom:24px;text-align:center;
+}
+.module-cards{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:20px;
+}
+
+.module-card{
+  position:relative;
+  height:200px;
+  border-radius:var(--radius);
+  cursor:pointer;
+  overflow:hidden;
+  transition:all var(--transition);
+  border:1px solid var(--border);
+  background:var(--surface);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;
+  z-index:1;
+}
+.module-card::before{
+  content:'';position:absolute;inset:0;
+  opacity:0;transition:opacity var(--transition);
+  z-index:0;
+}
+.module-card.freertos::before{
+  background:radial-gradient(ellipse at center,var(--accent1-bg),transparent 70%);
+}
+.module-card.sensor::before{
+  background:radial-gradient(ellipse at center,var(--accent2-bg),transparent 70%);
+}
+.module-card.protocol::before{
+  background:radial-gradient(ellipse at center,var(--accent3-bg),transparent 70%);
+}
+.module-card:hover{transform:translateY(-6px) scale(1.03);z-index:5}
+.module-card:hover::before{opacity:1}
+.module-card.active{transform:translateY(-6px) scale(1.03);z-index:5}
+.module-card.active::before{opacity:1}
+
+/* Glow border on hover */
+.module-card::after{
+  content:'';position:absolute;inset:-1px;border-radius:var(--radius);
+  opacity:0;transition:opacity var(--transition);
+  z-index:-1;pointer-events:none;
+}
+.module-card.freertos::after{background:linear-gradient(135deg,var(--accent1),transparent 60%)}
+.module-card.sensor::after{background:linear-gradient(135deg,var(--accent2),transparent 60%)}
+.module-card.protocol::after{background:linear-gradient(135deg,var(--accent3),transparent 60%)}
+.module-card:hover::after{opacity:0.5}
+.module-card.active::after{opacity:0.6}
+
+.module-card .card-icon{
+  font-size:48px;position:relative;z-index:1;
+  transition:transform var(--transition);
+  filter:drop-shadow(0 4px 12px rgba(0,0,0,0.3));
+}
+.module-card:hover .card-icon{transform:scale(1.15)}
+.module-card.active .card-icon{transform:scale(1.15)}
+.module-card .card-title{
+  font-size:18px;font-weight:700;position:relative;z-index:1;
+  letter-spacing:0.5px;
+  transition:all var(--transition);
+}
+.module-card.freertos .card-title{color:var(--accent1)}
+.module-card.sensor .card-title{color:var(--accent2)}
+.module-card.protocol .card-title{color:var(--accent3)}
+.module-card .card-count{
+  font-size:12px;color:var(--text3);position:relative;z-index:1;
+  transition:all var(--transition);
+}
+.module-card:hover .card-count{color:var(--text2)}
+.module-card.active .card-count{color:var(--text2)}
+
+/* Shine effect */
+.module-card .shine{
+  position:absolute;top:0;left:-75%;width:50%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent);
+  transform:skewX(-25deg);transition:left 0.6s;z-index:2;pointer-events:none;
+}
+.module-card:hover .shine{left:125%}
+
+/* Chapter bubbles on hover */
+.module-card .chapter-bubbles{
+  position:absolute;bottom:12px;left:12px;right:12px;
+  display:flex;flex-wrap:wrap;gap:6px;z-index:1;
+  opacity:0;transform:translateY(8px);
+  transition:all var(--transition);
+  justify-content:center;
+}
+.module-card:hover .chapter-bubbles,
+.module-card.active .chapter-bubbles{
+  opacity:1;transform:translateY(0);
+}
+.chapter-bubble{
+  padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;
+  background:rgba(255,255,255,0.08);color:var(--text2);
+  white-space:nowrap;transition:var(--transition-fast);
+  border:1px solid rgba(255,255,255,0.06);
+}
+.module-card.freertos .chapter-bubble:hover{background:var(--accent1-bg);color:var(--accent1);border-color:rgba(91,156,245,0.3)}
+.module-card.sensor .chapter-bubble:hover{background:var(--accent2-bg);color:var(--accent2);border-color:rgba(245,155,59,0.3)}
+.module-card.protocol .chapter-bubble:hover{background:var(--accent3-bg);color:var(--accent3);border-color:rgba(74,222,128,0.3)}
+
+/* ========== Directory Panel ========== */
+.directory-section{
+  position:relative;z-index:1;
+  padding:0 32px 40px;
+  max-width:1300px;margin:0 auto;
+}
+.directory-panel{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  overflow:hidden;
+  animation:fadeSlideUp 0.5s var(--transition);
+}
+@keyframes fadeSlideUp{
+  from{opacity:0;transform:translateY(20px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.dir-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 24px;border-bottom:1px solid var(--border);
+  gap:12px;
+}
+.dir-header h3{
+  font-size:15px;font-weight:700;
+  display:flex;align-items:center;gap:10px;
+}
+.dir-header .dir-actions{display:flex;gap:8px;align-items:center}
+.dir-body{padding:8px}
+.dir-empty{
+  text-align:center;padding:48px 20px;color:var(--text3);
+  font-size:14px;
+}
+.dir-empty svg{width:48px;height:48px;opacity:0.2;margin-bottom:12px}
+
+/* Chapter accordion */
+.chapter-group{margin:4px 0}
+.chapter-toggle{
+  display:flex;align-items:center;gap:10px;width:100%;
+  padding:14px 20px;background:transparent;border:none;
+  color:var(--text);font-size:14px;font-weight:600;cursor:pointer;
+  border-radius:var(--radius-sm);transition:var(--transition-fast);
+  text-align:left;font-family:inherit;
+}
+.chapter-toggle:hover{background:var(--surface-hover)}
+.chapter-toggle .ch-num{
+  width:32px;height:32px;border-radius:8px;display:flex;
+  align-items:center;justify-content:center;font-size:13px;font-weight:700;
+  flex-shrink:0;
+}
+.chapter-toggle .chevron{
+  margin-left:auto;transition:transform var(--transition-fast);
+  opacity:0.4;font-size:18px;
+}
+.chapter-group.open .chapter-toggle .chevron{transform:rotate(180deg)}
+.chapter-toggle .ch-count{
+  font-size:12px;color:var(--text3);font-weight:400;margin-left:8px;
+}
+
+/* Freertos chapter colors */
+.module-freertos .ch-num{background:var(--accent1-bg);color:var(--accent1)}
+.module-sensor .ch-num{background:var(--accent2-bg);color:var(--accent2)}
+.module-protocol .ch-num{background:var(--accent3-bg);color:var(--accent3)}
+
+/* Section items */
+.sections-list{
+  display:none;padding:0 20px 8px 62px;
+}
+.chapter-group.open .sections-list{display:block}
+.section-item{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 14px;border-radius:8px;cursor:pointer;
+  transition:var(--transition-fast);margin:2px 0;
+  border:1px solid transparent;
+}
+.section-item:hover{
+  background:var(--surface-hover);
+  border-color:var(--border);
+}
+.section-item .sec-dot{
+  width:7px;height:7px;border-radius:50%;flex-shrink:0;
+}
+.module-freertos .sec-dot{background:var(--accent1);opacity:0.6}
+.module-sensor .sec-dot{background:var(--accent2);opacity:0.6}
+.module-protocol .sec-dot{background:var(--accent3);opacity:0.6}
+.section-item:hover .sec-dot{opacity:1}
+.section-item .sec-title{
+  flex:1;font-size:13px;font-weight:500;
+  color:var(--text2);transition:var(--transition-fast);
+}
+.section-item:hover .sec-title{color:var(--text)}
+.section-item .sec-badge{
+  font-size:10px;padding:3px 8px;border-radius:10px;
+  background:var(--surface);color:var(--text3);
+  border:1px solid var(--border);
+}
+.section-item .sec-actions{
+  display:flex;gap:4px;opacity:0;transition:opacity 0.15s;
+}
+.section-item:hover .sec-actions{opacity:1}
+
+/* ========== Note Detail Modal ========== */
+.modal-overlay{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;
+  animation:fadeIn 0.25s ease;
+}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal-overlay.hidden{display:none}
+.modal{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:20px;width:100%;max-width:680px;
+  max-height:85vh;overflow-y:auto;
+  box-shadow:0 30px 80px rgba(0,0,0,0.5);
+  animation:modalIn 0.35s var(--transition);
+  position:relative;
+}
+@keyframes modalIn{
+  from{opacity:0;transform:translateY(30px) scale(0.96)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+.modal::-webkit-scrollbar{width:4px}
+.modal::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px}
+.modal-header{
+  padding:24px 28px 0;display:flex;align-items:flex-start;justify-content:space-between;
+  gap:12px;
+}
+.modal-header .meta{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  margin-bottom:6px;
+}
+.modal-badge{
+  font-size:11px;padding:4px 10px;border-radius:12px;font-weight:600;
+  letter-spacing:0.5px;
+}
+.modal-badge.freertos{background:var(--accent1-bg);color:var(--accent1)}
+.modal-badge.sensor{background:var(--accent2-bg);color:var(--accent2)}
+.modal-badge.protocol{background:var(--accent3-bg);color:var(--accent3)}
+.modal-header h2{font-size:20px;font-weight:700;line-height:1.4}
+.modal-close{
+  width:36px;height:36px;border-radius:50%;border:none;
+  background:rgba(255,255,255,0.05);color:var(--text2);
+  cursor:pointer;font-size:18px;display:flex;align-items:center;
+  justify-content:center;transition:var(--transition-fast);flex-shrink:0;
+}
+.modal-close:hover{background:rgba(239,68,68,0.15);color:#ef4444}
+.modal-body{padding:20px 28px 28px}
+.modal-body .note-text{
+  font-size:14px;line-height:1.9;color:var(--text2);
+  white-space:pre-wrap;margin-bottom:16px;
+}
+.modal-body .note-image{
+  width:100%;border-radius:12px;border:1px solid var(--border);
+  cursor:pointer;transition:transform var(--transition-fast);
+}
+.modal-body .note-image:hover{transform:scale(1.02)}
+.modal-footer-row{
+  padding:0 28px 24px;display:flex;justify-content:flex-end;gap:8px;
+}
+.modal-time{font-size:12px;color:var(--text3);margin-top:12px}
+
+/* ========== Form Modal ========== */
+.form-modal .modal{max-width:580px}
+.form-group{margin-bottom:16px}
+.form-group label{
+  display:block;font-size:12px;font-weight:600;color:var(--text3);
+  margin-bottom:6px;text-transform:uppercase;letter-spacing:0.8px;
+}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group input,.form-group textarea,.form-group select{
+  width:100%;padding:11px 14px;border-radius:10px;
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--text);font-size:14px;font-family:inherit;
+  outline:none;transition:var(--transition-fast);
+}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{
+  border-color:rgba(255,255,255,0.2);
+  box-shadow:0 0 0 3px rgba(255,255,255,0.03);
+}
+.form-group textarea{min-height:110px;resize:vertical}
+.form-group select{appearance:none;cursor:pointer}
+.form-group select option{background:var(--bg2);color:var(--text)}
+
+.img-upload-area{
+  border:2px dashed var(--border);border-radius:12px;
+  padding:20px;text-align:center;cursor:pointer;
+  transition:var(--transition-fast);position:relative;
+}
+.img-upload-area:hover{border-color:rgba(255,255,255,0.15);background:var(--surface-hover)}
+.img-upload-area.has-image{border-style:solid;border-color:rgba(255,255,255,0.1)}
+.img-upload-area img{max-width:100%;max-height:180px;border-radius:8px}
+.img-upload-area .placeholder{color:var(--text3);font-size:13px}
+.img-upload-area .remove-img{
+  position:absolute;top:8px;right:8px;width:26px;height:26px;
+  border-radius:50%;background:rgba(239,68,68,0.8);color:#fff;
+  border:none;cursor:pointer;font-size:12px;display:none;
+  align-items:center;justify-content:center;
+}
+.img-upload-area.has-image .remove-img{display:flex}
+
+.form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+
+/* ========== Image Preview Overlay ========== */
+.img-preview-overlay{
+  position:fixed;inset:0;z-index:300;cursor:pointer;
+  background:rgba(0,0,0,0.9);backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  display:flex;align-items:center;justify-content:center;
+  padding:32px;
+}
+.img-preview-overlay.hidden{display:none}
+.img-preview-overlay img{
+  max-width:92vw;max-height:92vh;border-radius:12px;
+  animation:modalIn 0.3s var(--transition);
+}
+
+/* ========== Toast ========== */
+.toast{
+  position:fixed;bottom:32px;left:50%;transform:translateX(-50%);
+  background:var(--bg2);color:var(--text);padding:12px 24px;
+  border-radius:24px;font-size:13px;z-index:400;font-weight:500;
+  border:1px solid var(--border);
+  box-shadow:0 8px 32px rgba(0,0,0,0.4);
+  opacity:0;pointer-events:none;
+  transition:opacity 0.3s,transform 0.3s;
+  transform:translateX(-50%) translateY(10px);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ========== Responsive ========== */
+@media(max-width:900px){
+  .module-cards{grid-template-columns:1fr;max-width:400px;margin:0 auto}
+  .module-card{height:160px}
+  .header{padding:12px 16px}
+  .hero-section{padding:24px 16px 16px}
+  .directory-section{padding:0 16px 24px}
+  .form-row{grid-template-columns:1fr}
+  .search-wrap input{width:120px}
+}
+
+/* ========== Micro animations ========== */
+@keyframes pulse{0%,100%{opacity:0.6}50%{opacity:1}}
+.pulse{animation:pulse 2s ease-in-out infinite}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.14)}
+</style>
+</head>
+<body>
+
+<!-- ====== HEADER ====== -->
+<header class="header">
+  <h1>嵌入式学习笔记 <span>·</span> Embedded</h1>
+  <div class="header-actions">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="searchInput" placeholder="搜索笔记...">
+    </div>
+    <button class="btn btn-primary" onclick="openFormModal()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      添加笔记
+    </button>
+    <button class="btn btn-ghost" onclick="exportData()">导出</button>
+    <button class="btn btn-ghost" onclick="importData()">导入</button>
+  </div>
+</header>
+
+<!-- ====== TOP: 3 MODULE CARDS ====== -->
+<section class="hero-section">
+  <h2>选择模块浏览目录</h2>
+  <div class="module-cards" id="moduleCards">
+    <!-- FreeRTOS -->
+    <div class="module-card freertos" data-column="freertos" onclick="selectModule('freertos')">
+      <div class="shine"></div>
+      <div class="card-icon">⚙️</div>
+      <div class="card-title">FreeRTOS 模块</div>
+      <div class="card-count" id="countFreertos">0 篇笔记</div>
+      <div class="chapter-bubbles" id="bubblesFreertos"></div>
+    </div>
+    <!-- 温湿度闹钟 -->
+    <div class="module-card sensor" data-column="sensor" onclick="selectModule('sensor')">
+      <div class="shine"></div>
+      <div class="card-icon">🌡️</div>
+      <div class="card-title">温湿度闹钟模块</div>
+      <div class="card-count" id="countSensor">0 篇笔记</div>
+      <div class="chapter-bubbles" id="bubblesSensor"></div>
+    </div>
+    <!-- 通信协议 -->
+    <div class="module-card protocol" data-column="protocol" onclick="selectModule('protocol')">
+      <div class="shine"></div>
+      <div class="card-icon">📡</div>
+      <div class="card-title">通信协议模块</div>
+      <div class="card-count" id="countProtocol">0 篇笔记</div>
+      <div class="chapter-bubbles" id="bubblesProtocol"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== BOTTOM: DIRECTORY PANEL ====== -->
+<section class="directory-section" id="directorySection">
+  <div class="directory-panel" id="directoryPanel">
+    <div class="dir-header">
+      <h3 id="dirTitle">📂 请在上方选择一个模块</h3>
+      <div class="dir-actions">
+        <button class="btn btn-ghost btn-sm" onclick="expandAll()">展开全部</button>
+        <button class="btn btn-ghost btn-sm" onclick="collapseAll()">收起全部</button>
+      </div>
+    </div>
+    <div class="dir-body" id="dirBody">
+      <div class="dir-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <p>点击上方模块卡片，查看该模块的章节目录</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== FORM MODAL ====== -->
+<div class="modal-overlay hidden" id="formModalOverlay">
+  <div class="modal form-modal">
+    <div class="modal-header">
+      <div>
+        <h2 id="formTitle">✏️ 添加新笔记</h2>
+      </div>
+      <button class="modal-close" onclick="closeFormModal()">✕</button>
+    </div>
+    <form id="noteForm" onsubmit="saveNote(event)" style="padding:0 28px 24px">
+      <input type="hidden" id="noteId">
+
+      <div class="form-group">
+        <label>所属专栏</label>
+        <select id="noteColumn" required>
+          <option value="freertos">FreeRTOS 模块</option>
+          <option value="sensor">温湿度闹钟模块</option>
+          <option value="protocol">通信协议模块</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>第几章</label>
+          <input type="text" id="noteChapter" placeholder="例如：第 3 章" required maxlength="20">
+        </div>
+        <div class="form-group">
+          <label>第几节</label>
+          <input type="text" id="noteSection" placeholder="例如：第 2 节" required maxlength="20">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>笔记标题</label>
+        <input type="text" id="noteTitle" placeholder="输入笔记标题..." required maxlength="100">
+      </div>
+
+      <div class="form-group">
+        <label>笔记内容</label>
+        <textarea id="noteContent" placeholder="输入笔记内容...支持多行文字"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>图片（可选）</label>
+        <div class="img-upload-area" id="imgUploadArea" onclick="document.getElementById('imgInput').click()">
+          <div class="placeholder">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.3;margin-bottom:6px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
+            <div>点击上传图片</div>
+          </div>
+          <img id="imgPreview" style="display:none" alt="预览">
+          <button type="button" class="remove-img" id="removeImgBtn" onclick="event.stopPropagation();removeImage()">✕</button>
+        </div>
+        <input type="file" id="imgInput" accept="image/*" style="display:none" onchange="handleImageUpload(event)">
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeFormModal()">取消</button>
+        <button type="submit" class="btn btn-primary" id="saveBtn">保存笔记</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ====== NOTE DETAIL MODAL ====== -->
+<div class="modal-overlay hidden" id="detailModalOverlay">
+  <div class="modal" id="detailModal">
+    <div class="modal-header">
+      <div>
+        <div class="meta" id="detailMeta"></div>
+        <h2 id="detailTitle"></h2>
+      </div>
+      <button class="modal-close" onclick="closeDetailModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="note-text" id="detailContent"></div>
+      <img class="note-image" id="detailImage" style="display:none" alt="笔记图片" onclick="previewImage(this.src)">
+      <div class="modal-time" id="detailTime"></div>
+    </div>
+    <div class="modal-footer-row">
+      <button class="btn btn-ghost" onclick="editNoteFromDetail()">编辑</button>
+      <button class="btn btn-ghost" style="color:#ef4444" onclick="deleteNoteFromDetail()">删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== IMAGE PREVIEW ====== -->
+<div class="img-preview-overlay hidden" id="imgPreviewOverlay" onclick="closeImgPreview()">
+  <img id="imgPreviewLarge" src="" alt="预览">
+</div>
+
+<!-- ====== TOAST ====== -->
+<div class="toast" id="toast"></div>
+
+<!-- ====== IMPORT INPUT ====== -->
+<input type="file" id="importInput" accept=".json" style="display:none" onchange="handleImport(event)">
+
+<script>
+// ========== API CONFIG ==========
+// Auto-detect API base URL: same origin when deployed, localhost:3000 for dev
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:3000'
+  : '';
+
+// ========== DATA ==========
+let notes = [];
+let activeModule = null;
+let detailNoteId = null;
+let isLoading = false;
+
+async function fetchNotes(){
+  try{
+    const res = await fetch(API_BASE + '/api/notes');
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    notes = await res.json();
+  }catch(e){
+    console.error('Failed to fetch notes:', e);
+    showToast('无法连接到服务器，请检查网络');
+    notes = [];
+  }
+}
+
+async function apiCreate(noteData){
+  const res = await fetch(API_BASE + '/api/notes', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(noteData)
+  });
+  if(!res.ok){ const e=await res.json(); throw new Error(e.error||'Create failed') }
+  return res.json();
+}
+
+async function apiUpdate(id, noteData){
+  const res = await fetch(API_BASE + '/api/notes/' + id, {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(noteData)
+  });
+  if(!res.ok){ const e=await res.json(); throw new Error(e.error||'Update failed') }
+  return res.json();
+}
+
+async function apiDelete(id){
+  const res = await fetch(API_BASE + '/api/notes/' + id, { method:'DELETE' });
+  if(!res.ok){ const e=await res.json(); throw new Error(e.error||'Delete failed') }
+  return res.json();
+}
+
+// ========== RENDER ==========
+async function renderAll(){
+  await fetchNotes();
+  renderModuleCards();
+  if(activeModule) renderDirectory(activeModule);
+}
+
+function renderModuleCards(){
+  const counts = {freertos:0,sensor:0,protocol:0};
+  const chapters = {freertos:new Set(),sensor:new Set(),protocol:new Set()};
+  notes.forEach(n=>{
+    if(counts[n.column]!==undefined)counts[n.column]++;
+    if(n.chapter && chapters[n.column]) chapters[n.column].add(n.chapter);
+  });
+
+  ['freertos','sensor','protocol'].forEach(col=>{
+    const cap = col.charAt(0).toUpperCase()+col.slice(1);
+    document.getElementById('count'+cap).textContent = counts[col]+' 篇笔记';
+    const bubblesEl = document.getElementById('bubbles'+cap);
+    const chs = [...chapters[col]].sort(localeChapterSort);
+    bubblesEl.innerHTML = chs.length ? chs.map(c=>`<span class="chapter-bubble">${c}</span>`).join('') : '';
+  });
+
+  document.querySelectorAll('.module-card').forEach(card=>{
+    card.classList.toggle('active', card.dataset.column === activeModule);
+  });
+}
+
+function localeChapterSort(a,b){
+  return a.localeCompare(b,'zh-Hans-CN',{numeric:true});
+}
+
+function renderDirectory(column){
+  const dirTitle = document.getElementById('dirTitle');
+  const dirBody = document.getElementById('dirBody');
+  const colNames = {freertos:'FreeRTOS 模块',sensor:'温湿度闹钟模块',protocol:'通信协议模块'};
+  const colIcons = {freertos:'⚙️',sensor:'🌡️',protocol:'📡'};
+
+  dirTitle.innerHTML = `${colIcons[column]} ${colNames[column]} <span style="font-size:12px;color:var(--text3);font-weight:400">目录</span>`;
+
+  const colNotes = notes.filter(n=>n.column===column);
+  if(!colNotes.length){
+    dirBody.innerHTML = `<div class="dir-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <p>该模块暂无笔记，点击上方「添加笔记」开始记录</p>
+    </div>`;
+    return;
+  }
+
+  const grouped = {};
+  colNotes.forEach(n=>{
+    const ch = n.chapter || '未分类';
+    if(!grouped[ch]) grouped[ch] = [];
+    grouped[ch].push(n);
+  });
+
+  const sortedChapters = Object.keys(grouped).sort(localeChapterSort);
+
+  let html = '';
+  sortedChapters.forEach(ch=>{
+    const sections = grouped[ch].sort((a,b)=>localeChapterSort(a.section||'',b.section||''));
+    html += `<div class="chapter-group module-${column} open" data-chapter="${escapeHtml(ch)}">
+      <button class="chapter-toggle" onclick="toggleChapter(this)">
+        <span class="ch-num">${escapeHtml(ch.replace(/第|章/g,''))}</span>
+        <span>${escapeHtml(ch)}</span>
+        <span class="ch-count">${sections.length} 节</span>
+        <span class="chevron">▾</span>
+      </button>
+      <div class="sections-list">`;
+
+    sections.forEach(n=>{
+      html += `<div class="section-item" onclick="openDetail('${n.id}')">
+        <span class="sec-dot"></span>
+        <span class="sec-title">${escapeHtml(n.section||'')} — ${escapeHtml(n.title)}</span>
+        ${n.image?'<span class="sec-badge">📷</span>':''}
+        <span class="sec-actions">
+          <button class="btn-icon" title="编辑" onclick="event.stopPropagation();editNoteById('${n.id}')">✎</button>
+          <button class="btn-icon danger" title="删除" onclick="event.stopPropagation();deleteNoteById('${n.id}')">✕</button>
+        </span>
+      </div>`;
+    });
+
+    html += `</div></div>`;
+  });
+
+  dirBody.innerHTML = html;
+}
+
+// ========== MODULE SELECTION ==========
+function selectModule(column){
+  if(activeModule===column){activeModule=null}
+  else{activeModule=column}
+  renderAll();
+  document.getElementById('directoryPanel').style.animation='none';
+  document.getElementById('directoryPanel').offsetHeight;
+  document.getElementById('directoryPanel').style.animation='fadeSlideUp 0.5s cubic-bezier(0.22,0.61,0.36,1)';
+}
+
+// ========== CHAPTER TOGGLE ==========
+function toggleChapter(btn){
+  btn.closest('.chapter-group').classList.toggle('open');
+}
+function expandAll(){
+  document.querySelectorAll('.chapter-group').forEach(g=>g.classList.add('open'));
+}
+function collapseAll(){
+  document.querySelectorAll('.chapter-group').forEach(g=>g.classList.remove('open'));
+}
+
+// ========== FORM MODAL ==========
+let editingId=null;
+
+function openFormModal(noteId){
+  editingId=noteId||null;
+  document.getElementById('formModalOverlay').classList.remove('hidden');
+  document.getElementById('formTitle').textContent = noteId ? '✏️ 编辑笔记' : '✏️ 添加新笔记';
+  document.getElementById('saveBtn').textContent = noteId ? '更新笔记' : '保存笔记';
+
+  if(noteId){
+    const n=notes.find(x=>x.id===noteId);
+    if(!n)return;
+    document.getElementById('noteId').value=n.id;
+    document.getElementById('noteColumn').value=n.column;
+    document.getElementById('noteChapter').value=n.chapter||'';
+    document.getElementById('noteSection').value=n.section||'';
+    document.getElementById('noteTitle').value=n.title||'';
+    document.getElementById('noteContent').value=n.content||'';
+    if(n.image)showImageInForm(n.image);else clearImageInForm();
+  }else{
+    document.getElementById('noteId').value='';
+    document.getElementById('noteColumn').value=activeModule||'freertos';
+    document.getElementById('noteChapter').value='';
+    document.getElementById('noteSection').value='';
+    document.getElementById('noteTitle').value='';
+    document.getElementById('noteContent').value='';
+    clearImageInForm();
+  }
+}
+
+function closeFormModal(){
+  document.getElementById('formModalOverlay').classList.add('hidden');
+  editingId=null;
+}
+
+async function saveNote(e){
+  e.preventDefault();
+  const title=document.getElementById('noteTitle').value.trim();
+  const content=document.getElementById('noteContent').value.trim();
+  const column=document.getElementById('noteColumn').value;
+  const chapter=document.getElementById('noteChapter').value.trim();
+  const section=document.getElementById('noteSection').value.trim();
+  const hasImage=document.getElementById('imgPreview').style.display!=='none';
+  const image=hasImage?document.getElementById('imgPreview').src:null;
+  if(!title)return showToast('请输入标题');
+  if(!chapter)return showToast('请输入章节');
+  if(!section)return showToast('请输入节号');
+
+  const noteData = { title, content, column, chapter, section, image };
+
+  try{
+    if(editingId){
+      await apiUpdate(editingId, noteData);
+      showToast('笔记已更新');
+    }else{
+      await apiCreate(noteData);
+      showToast('笔记已添加');
+    }
+    if(!activeModule) activeModule = column;
+    await renderAll();
+    closeFormModal();
+  }catch(e){
+    showToast('操作失败：'+e.message);
+  }
+  editingId=null;
+}
+
+// ========== NOTE DETAIL MODAL ==========
+function openDetail(id){
+  const n=notes.find(x=>x.id===id);
+  if(!n)return;
+  detailNoteId=id;
+  const colNames={freertos:'FreeRTOS 模块',sensor:'温湿度闹钟模块',protocol:'通信协议模块'};
+  document.getElementById('detailMeta').innerHTML = `<span class="modal-badge ${n.column}">${colNames[n.column]}</span>
+    <span style="font-size:12px;color:var(--text3)">${escapeHtml(n.chapter||'')} · ${escapeHtml(n.section||'')}</span>`;
+  document.getElementById('detailTitle').textContent=n.title;
+  document.getElementById('detailContent').textContent=n.content||'';
+  document.getElementById('detailTime').textContent = n.updatedAt
+    ? '最后更新：'+formatTime(n.updatedAt)
+    : '';
+  const img=document.getElementById('detailImage');
+  if(n.image){img.src=n.image;img.style.display='block'}
+  else{img.src='';img.style.display='none'}
+  document.getElementById('detailModalOverlay').classList.remove('hidden');
+}
+
+function closeDetailModal(){
+  document.getElementById('detailModalOverlay').classList.add('hidden');
+  detailNoteId=null;
+}
+
+function editNoteFromDetail(){
+  if(detailNoteId){closeDetailModal();openFormModal(detailNoteId)}
+}
+async function deleteNoteFromDetail(){
+  if(!detailNoteId) return;
+  if(!confirm('确定要删除这条笔记吗？')) return;
+  try{
+    await apiDelete(detailNoteId);
+    await renderAll();
+    closeDetailModal();
+    showToast('笔记已删除');
+  }catch(e){ showToast('删除失败：'+e.message) }
+}
+
+function editNoteById(id){openFormModal(id)}
+async function deleteNoteById(id){
+  if(!confirm('确定要删除这条笔记吗？')) return;
+  try{
+    await apiDelete(id);
+    await renderAll();
+    showToast('笔记已删除');
+  }catch(e){ showToast('删除失败：'+e.message) }
+}
+
+// ========== IMAGE ==========
+function handleImageUpload(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  if(!file.type.startsWith('image/'))return showToast('请选择图片文件');
+  if(file.size>5*1024*1024)return showToast('图片大小不能超过5MB');
+  const reader=new FileReader();
+  reader.onload=ev=>showImageInForm(ev.target.result);
+  reader.readAsDataURL(file);
+}
+function showImageInForm(src){
+  document.getElementById('imgPreview').src=src;
+  document.getElementById('imgPreview').style.display='block';
+  document.getElementById('imgUploadArea').classList.add('has-image');
+  document.getElementById('imgUploadArea').querySelector('.placeholder').style.display='none';
+}
+function clearImageInForm(){
+  document.getElementById('imgPreview').src='';
+  document.getElementById('imgPreview').style.display='none';
+  document.getElementById('imgUploadArea').classList.remove('has-image');
+  document.getElementById('imgUploadArea').querySelector('.placeholder').style.display='';
+  document.getElementById('imgInput').value='';
+}
+function removeImage(){clearImageInForm()}
+
+function previewImage(src){
+  document.getElementById('imgPreviewLarge').src=src;
+  document.getElementById('imgPreviewOverlay').classList.remove('hidden');
+}
+function closeImgPreview(){
+  document.getElementById('imgPreviewOverlay').classList.add('hidden');
+}
+
+// ========== SEARCH ==========
+document.getElementById('searchInput').addEventListener('input',async function(){
+  const q=this.value.trim().toLowerCase();
+  if(!q){renderAll();return}
+  await fetchNotes();
+  const colNotes = notes.filter(n=>{
+    return (n.title||'').toLowerCase().includes(q) ||
+           (n.content||'').toLowerCase().includes(q) ||
+           (n.chapter||'').toLowerCase().includes(q) ||
+           (n.section||'').toLowerCase().includes(q);
+  });
+  if(!colNotes.length){
+    document.getElementById('dirBody').innerHTML = '<div class="dir-empty"><p>未找到匹配的笔记</p></div>';
+    document.getElementById('dirTitle').textContent = '🔍 搜索结果';
+    return;
+  }
+  const grouped={};
+  colNotes.forEach(n=>{const k=n.column||'other';if(!grouped[k])grouped[k]=[];grouped[k].push(n)});
+  const colNames={freertos:'FreeRTOS 模块',sensor:'温湿度闹钟模块',protocol:'通信协议模块'};
+  document.getElementById('dirTitle').textContent = `🔍 搜索结果（${colNotes.length} 条）`;
+  let html='';
+  Object.keys(grouped).forEach(col=>{
+    grouped[col].forEach(n=>{
+      html+=`<div class="section-item module-${col}" onclick="openDetail('${n.id}')" style="margin:4px 8px">
+        <span class="sec-dot"></span>
+        <span class="sec-title">[${colNames[col]||col}] ${escapeHtml(n.chapter||'')} · ${escapeHtml(n.section||'')} — ${escapeHtml(n.title)}</span>
+      </div>`;
+    });
+  });
+  document.getElementById('dirBody').innerHTML = html;
+});
+
+// ========== MODAL CLICK OUTSIDE ==========
+document.getElementById('formModalOverlay').addEventListener('click',function(e){if(e.target===this)closeFormModal()});
+document.getElementById('detailModalOverlay').addEventListener('click',function(e){if(e.target===this)closeDetailModal()});
+
+// ========== KEYBOARD ==========
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    if(!document.getElementById('imgPreviewOverlay').classList.contains('hidden'))closeImgPreview();
+    else if(!document.getElementById('detailModalOverlay').classList.contains('hidden'))closeDetailModal();
+    else if(!document.getElementById('formModalOverlay').classList.contains('hidden'))closeFormModal();
+  }
+});
+
+// ========== TOAST ==========
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2000);
+}
+
+// ========== EXPORT/IMPORT ==========
+async function exportData(){
+  await fetchNotes();
+  const blob=new Blob([JSON.stringify(notes,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='study-notes-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();URL.revokeObjectURL(a.href);
+  showToast('数据已导出');
+}
+function importData(){document.getElementById('importInput').click()}
+async function handleImport(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async ev=>{
+    try{
+      const imported=JSON.parse(ev.target.result);
+      if(!Array.isArray(imported))throw new Error('格式错误');
+      if(!confirm(`即将导入 ${imported.length} 条笔记，是否合并到服务器？`))return;
+      let count=0;
+      for(const n of imported){
+        try{
+          await apiCreate({title:n.title||'',content:n.content||'',column:n.column||'freertos',chapter:n.chapter||'',section:n.section||'',image:n.image||null});
+          count++;
+        }catch(e){console.error('Import failed for:',n.title,e)}
+      }
+      await renderAll();
+      showToast(`成功导入 ${count}/${imported.length} 条笔记`);
+    }catch{showToast('导入失败：文件格式不正确')}
+  };
+  reader.readAsText(file);e.target.value='';
+}
+
+// ========== HELPERS ==========
+function escapeHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function formatTime(iso){
+  const d=new Date(iso);
+  const pad=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// ========== INIT ==========
+renderAll();
+</script>
+</body>
+</html>
