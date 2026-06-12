@@ -95,18 +95,22 @@ function serveStatic(req, res) {
 function parseBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';
+    let tooLarge = false;
     req.on('data', chunk => {
+      if (tooLarge) return;
       body += chunk.toString();
-      // Limit body size to 50MB (for images)
-      if (body.length > 50 * 1024 * 1024) {
-        reject(new Error('Body too large'));
+      // Limit body size to 20MB (for images)
+      if (body.length > 20 * 1024 * 1024) {
+        tooLarge = true;
+        reject(new Error('Content too large (max 20MB)'));
       }
     });
     req.on('end', () => {
+      if (tooLarge) return;
       try {
         resolve(body ? JSON.parse(body) : {});
       } catch (e) {
-        reject(new Error('Invalid JSON'));
+        reject(new Error('Invalid JSON format: ' + e.message));
       }
     });
     req.on('error', reject);
