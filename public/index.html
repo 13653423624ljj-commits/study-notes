@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>嵌入式学习笔记</title>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
 <style>
 /* ========== Reset & Vars ========== */
 *{margin:0;padding:0;box-sizing:border-box}
@@ -603,12 +604,29 @@ body::after{
       </div>
 
       <div class="form-group">
-        <label>笔记内容</label>
-        <textarea id="noteContent" placeholder="输入笔记内容...支持多行文字"></textarea>
+        <label>笔记内容 <span style="color:var(--text3);font-weight:400">（支持直接粘贴文字、图片、Word文档）</span></label>
+        <textarea id="noteContent" placeholder="在此输入笔记内容...&#10;也可以直接 Ctrl+V 粘贴文字或图片&#10;或点击下方上传 Word 文档自动提取文字"></textarea>
       </div>
 
       <div class="form-group">
-        <label>图片（可选）</label>
+        <label>Word 文档（可选，自动提取文字到上方内容）</label>
+        <div class="img-upload-area" id="docUploadArea" onclick="document.getElementById('docInput').click()">
+          <div class="placeholder" id="docPlaceholder">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.3;margin-bottom:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <div>点击上传 .docx / .doc 文件</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">支持 Word 2007+ 格式 (.docx)</div>
+          </div>
+          <div id="docPreview" style="display:none;font-size:13px;color:var(--text2);padding:8px">
+            <div style="font-weight:600;margin-bottom:4px" id="docName"></div>
+            <div style="font-size:11px;color:var(--accent1)" id="docStatus">已提取文字到笔记内容</div>
+          </div>
+          <button type="button" class="remove-img" id="removeDocBtn" onclick="event.stopPropagation();removeDoc()" style="display:none">✕</button>
+        </div>
+        <input type="file" id="docInput" accept=".docx,.doc" style="display:none" onchange="handleDocUpload(event)">
+      </div>
+
+      <div class="form-group">
+        <label>图片（可选，也可直接粘贴到内容框）</label>
         <div class="img-upload-area" id="imgUploadArea" onclick="document.getElementById('imgInput').click()">
           <div class="placeholder">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.3;margin-bottom:6px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
@@ -852,12 +870,13 @@ function openFormModal(noteId){
 function closeFormModal(){
   document.getElementById('formModalOverlay').classList.add('hidden');
   editingId=null;
+  removeDoc();
 }
 
 async function saveNote(e){
   e.preventDefault();
   const title=document.getElementById('noteTitle').value.trim();
-  const content=document.getElementById('noteContent').value.trim();
+  let content=document.getElementById('noteContent').value;
   const column=document.getElementById('noteColumn').value;
   const chapter=document.getElementById('noteChapter').value.trim();
   const section=document.getElementById('noteSection').value.trim();
@@ -866,6 +885,12 @@ async function saveNote(e){
   if(!title)return showToast('请输入标题');
   if(!chapter)return showToast('请输入章节');
   if(!section)return showToast('请输入节号');
+
+  // Size check: image base64 should not exceed ~15MB total request
+  const totalPayload = JSON.stringify({title,content,column,chapter,section,image}).length;
+  if(totalPayload > 18 * 1024 * 1024){
+    return showToast('内容+图片总大小超过限制，请压缩图片或减少文字');
+  }
 
   const noteData = { title, content, column, chapter, section, image };
 
@@ -880,8 +905,10 @@ async function saveNote(e){
     if(!activeModule) activeModule = column;
     await renderAll();
     closeFormModal();
+    removeDoc(); // clear doc upload state
   }catch(e){
-    showToast('操作失败：'+e.message);
+    console.error('Save note error:', e);
+    showToast('保存失败：' + (e.message || '网络或格式错误，请检查内容'));
   }
   editingId=null;
 }
@@ -932,6 +959,70 @@ async function deleteNoteById(id){
     await renderAll();
     showToast('笔记已删除');
   }catch(e){ showToast('删除失败：'+e.message) }
+}
+
+// ========== CLIPBOARD PASTE ==========
+document.getElementById('noteContent').addEventListener('paste', function(e){
+  const items = e.clipboardData && e.clipboardData.items;
+  if(!items) return;
+  let hasImage = false;
+  for(let i=0;i<items.length;i++){
+    const item = items[i];
+    if(item.type.indexOf('image') !== -1){
+      hasImage = true;
+      e.preventDefault();
+      const blob = item.getAsFile();
+      if(blob.size > 5*1024*1024){ showToast('粘贴的图片太大，超过5MB'); continue; }
+      const reader = new FileReader();
+      reader.onload = ev => showImageInForm(ev.target.result);
+      reader.readAsDataURL(blob);
+      showToast('图片已粘贴到图片区域');
+    }
+  }
+});
+
+// ========== WORD / DOCX ==========
+function handleDocUpload(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const isDocx = file.name.toLowerCase().endsWith('.docx');
+  const isDoc = file.name.toLowerCase().endsWith('.doc');
+  if(!isDocx && !isDoc){ return showToast('请选择 .docx 或 .doc 文件'); }
+  document.getElementById('docName').textContent = file.name;
+  document.getElementById('docPreview').style.display = 'block';
+  document.getElementById('docPlaceholder').style.display = 'none';
+  document.getElementById('removeDocBtn').style.display = 'flex';
+  document.getElementById('docUploadArea').classList.add('has-image');
+
+  if(isDocx && typeof mammoth !== 'undefined'){
+    document.getElementById('docStatus').textContent = '正在提取文字...';
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      mammoth.extractRawText({arrayBuffer: ev.target.result})
+        .then(result => {
+          const ta = document.getElementById('noteContent');
+          const existing = ta.value.trim();
+          ta.value = existing ? (existing + '\n\n' + result.value) : result.value;
+          document.getElementById('docStatus').textContent = '已提取文字到笔记内容';
+          showToast('Word 文档文字已提取');
+        })
+        .catch(err => {
+          document.getElementById('docStatus').textContent = '提取失败: ' + err.message;
+          showToast('Word 解析失败，请手动复制粘贴');
+        });
+    };
+    reader.readAsArrayBuffer(file);
+  } else if(isDoc){
+    document.getElementById('docStatus').textContent = '.doc 旧格式暂不支持自动提取，请手动复制内容';
+    showToast('.doc 格式请手动复制文字到内容框');
+  }
+}
+function removeDoc(){
+  document.getElementById('docPreview').style.display = 'none';
+  document.getElementById('docPlaceholder').style.display = '';
+  document.getElementById('removeDocBtn').style.display = 'none';
+  document.getElementById('docUploadArea').classList.remove('has-image');
+  document.getElementById('docInput').value = '';
 }
 
 // ========== IMAGE ==========
